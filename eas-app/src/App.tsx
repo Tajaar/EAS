@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContent";
-import { Login } from "./pages/Login";
+import Login from "./pages/Login";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { EmployeeDashboard } from "./pages/EmployeeDashboard";
 import { Navbar } from "./components/Navbar";

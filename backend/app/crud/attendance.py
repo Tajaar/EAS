@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from app.models.attendance import AttendanceLog, AttendanceSummary
 from datetime import datetime, date, timedelta
+from sqlalchemy import func
+
 
 def create_log(db: Session, user_id: int, check_in=None, check_out=None, method="portal"):
     log = AttendanceLog(
@@ -15,9 +17,7 @@ def create_log(db: Session, user_id: int, check_in=None, check_out=None, method=
     return log
 
 def update_summary(db: Session, user_id: int, date_: date):
-    from sqlalchemy import func
-
-    # Fetch all logs for the day
+    # Fetch all logs for the user for the day
     logs = db.query(AttendanceLog).filter(
         AttendanceLog.user_id == user_id,
         func.date(AttendanceLog.check_in) == date_
@@ -26,20 +26,19 @@ def update_summary(db: Session, user_id: int, date_: date):
     if not logs:
         return None
 
-    # First in / Final out
-    first_in = min([log.check_in for log in logs if log.check_in])
-    final_out = max([log.check_out for log in logs if log.check_out])
+    # First check-in
+    first_in_times = [log.check_in for log in logs if log.check_in]
+    first_in = min(first_in_times) if first_in_times else None
 
-    # Calculate total duration
+    # Final check-out
+    check_out_times = [log.check_out for log in logs if log.check_out]
+    final_out = max(check_out_times) if check_out_times else None
+
+    # Total duration = sum of all intervals
     total_duration = timedelta()
     for log in logs:
         if log.check_in and log.check_out:
             total_duration += log.check_out - log.check_in
-
-    # Convert to HH:MM:SS
-    hours, remainder = divmod(total_duration.total_seconds(), 3600)
-    minutes, seconds = divmod(remainder, 60)
-    total_duration_str = f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}"
 
     # Update or create summary
     summary = db.query(AttendanceSummary).filter(
@@ -64,6 +63,7 @@ def update_summary(db: Session, user_id: int, date_: date):
     db.commit()
     db.refresh(summary)
     return summary
+
 
 def get_user_logs(db: Session, user_id: int):
     return db.query(AttendanceLog).filter(AttendanceLog.user_id == user_id).all()

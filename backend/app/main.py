@@ -18,5 +18,5 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix="/auth")
-app.include_router(attendance.router, prefix="/attendance")
+app.include_router(attendance.router)
 app.include_router(admin.router, prefix="/admin")
