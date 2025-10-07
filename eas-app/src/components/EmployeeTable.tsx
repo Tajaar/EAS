@@ -1,162 +1,231 @@
-import React, { useMemo, useState, useEffect } from "react";
-import axios from "axios";
+// src/components/EmployeeTable.tsx
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import dayjs from "dayjs";
+import styled from "styled-components";
 
-type Employee = {
-  id: number;
-  name: string;
-  email?: string;
-  role?: string;
-  department?: string;
-};
+// Styled components
+const Wrapper = styled.div`
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  background: #f9f9f9;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+`;
 
-type LogItem = {
-  id: number;
-  employee_id: number;
-  check_in: string | null;
-  check_out: string | null;
-  duration_seconds: number | null;
-  date: string; // YYYY-MM-DD
-};
+const Title = styled.h3`
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  text-align: center;
+`;
 
-export const EmployeeTableCard: React.FC<{
-  apiBase?: string;
-}> = ({ apiBase = "/api" }) => {
-  const [query, setQuery] = useState("");
-  const [filterDept, setFilterDept] = useState("");
-  const [open, setOpen] = useState(true);
-  const [employees, setEmployees] = useState<Employee[] | null>(null);
-  const [logs, setLogs] = useState<LogItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+const CalendarContainer = styled.div`
+  margin-top: 16px;
+`;
 
-  // search triggered only on explicit search - until then show "no data"
-  const searchEmployees = async () => {
-    if (!query.trim()) {
-      setEmployees(null);
-      return;
-    }
-    setLoading(true);
-    try {
-      const { data } = await axios.get(`${apiBase}/employees/search`, { params: { q: query, department: filterDept }});
-      setEmployees(data);
-    } finally {
-      setLoading(false);
-    }
-  };
+const MonthNavigation = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+`;
 
-  const fetchLogs = async (employeeId: number) => {
-    setLoading(true);
-    try {
-      const { data } = await axios.get(`${apiBase}/attendance/logs`, { params: { employee_id: employeeId }});
-      setLogs(data);
-    } finally {
-      setLoading(false);
-    }
-  };
+const NavButton = styled.button`
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  background: #e0e0e0;
+  cursor: pointer;
+  &:hover {
+    background: #bdbdbd;
+  }
+`;
 
-  const onEdit = (e: Employee) => {
-    // open modal or inline edit — simplified here as prompt
-    const newName = prompt("Edit name", e.name);
-    if (!newName) return;
-    axios.patch(`${apiBase}/employees/${e.id}`, { name: newName }).then(() => {
-      setEmployees(prev => prev?.map(it => (it.id === e.id ? { ...it, name: newName } : it)) ?? prev);
-    });
-  };
+const MonthTitle = styled.h4`
+  font-weight: 600;
+`;
 
-  const onDelete = (e: Employee) => {
-    if (!confirm(`Delete ${e.name}?`)) return;
-    axios.delete(`${apiBase}/employees/${e.id}`).then(() => {
-      setEmployees(prev => prev?.filter(it => it.id !== e.id) ?? prev);
-    });
-  };
+const Weekdays = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 4px;
+`;
 
-  // compute total duration from logs
-  const totalDuration = useMemo(() => {
-    return logs.reduce((acc, l) => acc + (l.duration_seconds ?? 0), 0);
-  }, [logs]);
+const CalendarGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+`;
+
+const EmptyCell = styled.div`
+  height: 80px;
+`;
+
+const DayCellWrapper = styled.div`
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 6px;
+  text-align: center;
+  cursor: pointer;
+`;
+
+const DayNumber = styled.div`
+  font-weight: 600;
+`;
+const Day = styled.div`
+  font-weight: 600;
+  text-align: center;
+`;
+const DurationText = styled.div`
+  font-size: 0.85rem;
+  color: #2e7d32;
+  margin-top: 2px;
+`;
+
+const LogsTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 4px 6px;
+    font-size: 0.75rem;
+  }
+
+  th {
+    background: #f0f0f0;
+    font-weight: 600;
+  }
+`;
+
+// Component
+interface EmployeeTableProps {
+  logs: any[]; // all logs for the employee
+  onFilter?: (logs: any[]) => void; // callback when a specific day is expanded or filtered
+}
+
+export const EmployeeTable = ({ logs, onFilter }: EmployeeTableProps) => {
+  const [month, setMonth] = useState(dayjs());
+
+  // group logs by day
+  const groupedLogs: Record<string, any[]> = logs.reduce((acc, log) => {
+    const day = dayjs(log.check_in).format("YYYY-MM-DD");
+    if (!acc[day]) acc[day] = [];
+    acc[day].push(log);
+    return acc;
+  }, {});
+
+  // generate calendar
+  const startOfMonth = month.startOf("month");
+  const endOfMonth = month.endOf("month");
+  const startDay = startOfMonth.day();
+  const daysInMonth = endOfMonth.date();
+
+  const calendarDays = [];
+  for (let i = 0; i < startDay; i++) calendarDays.push(null);
+  for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
+
+  const handlePrevMonth = () => setMonth(month.subtract(1, "month"));
+  const handleNextMonth = () => setMonth(month.add(1, "month"));
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded p-4 w-full">
-      <div className="flex justify-between items-center">
-        <h3 className="font-semibold">Employee list</h3>
-        <div className="flex items-center gap-2">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search employees (press Search)"
-            className="border rounded px-2 py-1 text-sm"
-          />
-          <select value={filterDept} onChange={e => setFilterDept(e.target.value)} className="border rounded px-2 py-1 text-sm">
-            <option value="">All depts</option>
-            <option value="Engineering">Engineering</option>
-            <option value="HR">HR</option>
-            <option value="Sales">Sales</option>
-          </select>
-          <button onClick={searchEmployees} className="btn btn-sm">Search</button>
-          <button onClick={() => { setOpen(!open); }} className="btn btn-ghost">{open ? "Collapse" : "Expand"}</button>
-        </div>
-      </div>
+    <Wrapper>
+      <Title>My Attendance Calendar</Title>
 
-      {!open ? (
-        <div className="mt-3 text-sm text-gray-500">List collapsed — expand to view employees.</div>
-      ) : (
-        <>
-          <div className="mt-3">
-            {employees === null ? (
-              <div className="text-sm text-gray-500">No data. Use the search to load employees.</div>
-            ) : loading ? (
-              <div>Loading...</div>
-            ) : employees.length === 0 ? (
-              <div className="text-sm text-gray-500">No results</div>
-            ) : (
-              <div className="space-y-2">
-                {employees.map(emp => (
-                  <div key={emp.id} className="border rounded p-2 flex justify-between items-center">
-                    <div>
-                      <div className="font-medium">{emp.name} <span className="text-xs text-gray-500">({emp.role ?? "—"})</span></div>
-                      <div className="text-xs text-gray-500">{emp.department ?? "—"} • {emp.email}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => { setSelectedEmployee(emp); fetchLogs(emp.id); }} className="px-2 py-1 text-sm border rounded">View Logs</button>
-                      <button onClick={() => onEdit(emp)} className="px-2 py-1 text-sm border rounded">Edit</button>
-                      <button onClick={() => onDelete(emp)} className="px-2 py-1 text-sm border rounded text-red-600">Delete</button>
-                    </div>
-                  </div>
+      <CalendarContainer>
+        <MonthNavigation>
+          <NavButton onClick={handlePrevMonth}>Prev</NavButton>
+          <MonthTitle>{month.format("MMMM YYYY")}</MonthTitle>
+          <NavButton onClick={handleNextMonth}>Next</NavButton>
+        </MonthNavigation>
+
+        <Weekdays>
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => (
+            <Day key={d}>{d}</Day>
+          ))}
+        </Weekdays>
+
+        <CalendarGrid>
+          {calendarDays.map((day, idx) => {
+            if (!day) return <EmptyCell key={idx} />;
+
+            const dayKey = month.date(day).format("YYYY-MM-DD");
+            const logsForDay = groupedLogs[dayKey] || [];
+            const totalDuration = logsForDay.reduce((acc, log) => {
+              if (log.check_in && log.check_out) {
+                return acc + (new Date(log.check_out).getTime() - new Date(log.check_in).getTime());
+              }
+              return acc;
+            }, 0);
+            const hours = Math.floor(totalDuration / (1000 * 60 * 60));
+            const minutes = Math.floor((totalDuration % (1000 * 60 * 60)) / (1000 * 60));
+            const durationStr = `${hours}h ${minutes}m`;
+
+            return (
+              <DayCell
+                key={dayKey}
+                day={day}
+                logs={logsForDay}
+                duration={durationStr}
+                onExpand={(dayLogs) => onFilter?.(dayLogs)} // pass logs back to parent
+              />
+            );
+          })}
+        </CalendarGrid>
+      </CalendarContainer>
+    </Wrapper>
+  );
+};
+
+// DayCell component
+const DayCell = ({ day, logs, duration, onExpand }: { day: number; logs: any[]; duration: string; onExpand?: (logs: any[]) => void }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  const handleClick = () => {
+    setExpanded(!expanded);
+    if (!expanded) {
+      onExpand?.(logs); // send day logs to parent
+    } else {
+      onExpand?.([]); // collapse resets logs
+    }
+  };
+
+  return (
+    <DayCellWrapper onClick={handleClick}>
+      <DayNumber>{day}</DayNumber>
+      {logs.length > 0 && <DurationText>{duration}</DurationText>}
+
+      <AnimatePresence>
+        {expanded && logs.length > 0 && (
+          <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} style={{ marginTop: 4 }}>
+            <LogsTable>
+              <thead>
+                <tr>
+                  <th>Check In</th>
+                  <th>Check Out</th>
+                  <th>Method</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((log, idx) => (
+                  <tr key={idx}>
+                    <td>{log.check_in || "-"}</td>
+                    <td>{log.check_out || "-"}</td>
+                    <td>{log.method}</td>
+                  </tr>
                 ))}
-              </div>
-            )}
-          </div>
-
-          {/* logs panel */}
-          {selectedEmployee && (
-            <div className="mt-4 border-t pt-3">
-              <div className="flex justify-between items-center">
-                <h4 className="font-medium">Logs for {selectedEmployee.name}</h4>
-                <div className="text-sm">Total duration: {(totalDuration / 3600).toFixed(2)} hrs</div>
-              </div>
-              <div className="mt-2">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs text-gray-500">
-                      <th>Date</th><th>Check-in</th><th>Check-out</th><th>Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logs.map(l => (
-                      <tr key={l.id}>
-                        <td className="py-1">{l.date}</td>
-                        <td>{l.check_in ? new Date(l.check_in).toLocaleTimeString() : "—"}</td>
-                        <td>{l.check_out ? new Date(l.check_out).toLocaleTimeString() : "—"}</td>
-                        <td>{l.duration_seconds ? new Date(l.duration_seconds * 1000).toISOString().substr(11, 8) : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
+              </tbody>
+            </LogsTable>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </DayCellWrapper>
   );
 };

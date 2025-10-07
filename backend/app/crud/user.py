@@ -22,3 +22,7 @@ def create_user(db: Session, name: str, email: str, password: str, role: str):
 
 def get_all_users(db: Session):
     return db.query(User).all()
+
+def get_all_employees(db: Session):
+    """Fetch all users with role='employee'"""
+    return db.query(User).filter(User.role == "employee").all()

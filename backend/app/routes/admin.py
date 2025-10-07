@@ -14,7 +14,7 @@ router = APIRouter()
 @router.post("/add-user")
 def add_user(name: str, email: str, password: str, role: str, admin_id: int, db: Session = Depends(get_db)):
     admin = get_user_by_id(db, admin_id)
-    if admin.role.value != "admin":
+    if admin.role != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
     return create_user(db, name=name, email=email, password=password, role=role)
 
@@ -22,9 +22,9 @@ def add_user(name: str, email: str, password: str, role: str, admin_id: int, db:
 @router.get("/users")
 def list_users(admin_id: int, db: Session = Depends(get_db)):
     admin = get_user_by_id(db, admin_id)
-    if admin.role.value != "admin":
+    if admin.role != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
-    return db.query(User).filter(User.role == "employee").all()
+    return db.query(User).all()
 
 # ----------------- Get all logs with optional filters -----------------
 @router.get("/all-logs")
@@ -36,7 +36,7 @@ def get_all_logs(
 ):
     # Verify admin
     admin = db.query(User).filter(User.id == admin_id).first()
-    if not admin or admin.role.value != "admin":
+    if not admin or admin.role != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
 
     query = db.query(AttendanceLog)
@@ -68,7 +68,7 @@ def get_all_logs(
 @router.delete("/delete-user/{user_id}")
 def delete_user(user_id: int, admin_id: int, db: Session = Depends(get_db)):
     admin = get_user_by_id(db, admin_id)
-    if admin.role.value != "admin":
+    if admin.role != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
     user = get_user_by_id(db, user_id)
     if not user:

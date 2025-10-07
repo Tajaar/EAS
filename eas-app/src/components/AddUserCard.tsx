@@ -1,126 +1,251 @@
-// eas-app/src/components/AddUserCard.tsx
+// src/components/AddUserCard.tsx
 import React, { useState } from "react";
 import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
-import { PlusCircle } from "lucide-react";
-import axios from "axios";
-import Button from "./Button"; // your shared Button component
+import { api } from "../services/api";
 
-const Card = styled(motion.div)`
-  background: #fff;
-  border-radius: 1rem;
-  padding: 2rem;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  max-width: 500px;
-  margin-top: 1rem;
-`;
+interface AddUserCardProps {}
 
-const Form = styled.form`
-  margin-top: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
+export const AddUserCard: React.FC<AddUserCardProps> = () => {
+  const [expanded, setExpanded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(
+    null
+  );
 
-const Input = styled.input`
-  padding: 0.75rem 1rem;
-  border-radius: 1rem;
-  border: 1px solid #cbd5e1;
-  outline: none;
-  font-size: 1rem;
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    role: "employee",
+    password: "",
+    department: "",
+});
 
-  &:focus {
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
-  }
-`;
+  const toggleExpand = () => setExpanded(!expanded);
 
-const Select = styled.select`
-  padding: 0.75rem 1rem;
-  border-radius: 1rem;
-  border: 1px solid #cbd5e1;
-  font-size: 1rem;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
-  &:focus {
-    border-color: #60a5fa;
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
-    outline: none;
-  }
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 1rem;
-`;
-
-export const AddUserCard: React.FC<{ apiBase?: string }> = ({ apiBase = "/api" }) => {
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", role: "Employee", department: "" });
-
-  const submit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await axios.post(`${apiBase}/employees`, form);
-    setForm({ name: "", email: "", role: "Employee", department: "" });
-    setOpen(false);
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      const res = await api.post("/users", formData);
+
+      if (res.status === 201 || res.status === 200) {
+        setMessage({ type: "success", text: "✅ User added successfully!" });
+        setFormData({ name: "", email: "", role: "employee", password: "", department: "" });
+      } else {
+        setMessage({ type: "error", text: "⚠️ Failed to add user. Please try again." });
+      }
+    } catch (err: any) {
+      console.error(err);
+      setMessage({
+        type: "error",
+        text: err.response?.data?.detail || "Server error. Please check backend.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="mb-6">
-      <Button onClick={() => setOpen((prev) => !prev)}>
-        <PlusCircle className="w-5 h-5 mr-2" />
-        {open ? "Hide Add User" : "Add New User"}
-      </Button>
+    <Wrapper>
+      <ToggleButton onClick={toggleExpand}>
+        {expanded ? "− Hide Add User" : "+ Add New User"}
+      </ToggleButton>
 
       <AnimatePresence initial={false}>
-        {open && (
-          <Card
-            key="add-user-card"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
+        {expanded && (
+          <motion.div
+            key="add-user-form"
+            initial={{ opacity: 0, height: 0, scale: 0.95 }}
+            animate={{ opacity: 1, height: "auto", scale: 1 }}
+            exit={{ opacity: 0, height: 0, scale: 0.95 }}
+            transition={{ duration: 0.35, ease: "easeInOut" }}
+            className="overflow-hidden"
           >
-            <Form onSubmit={submit}>
-              <Input
-                required
-                placeholder="Name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-              <Input
-                required
-                type="email"
-                placeholder="Email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-              <div style={{ display: "flex", gap: "1rem" }}>
-                <Select
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
-                >
-                  <option>Employee</option>
-                  <option>Admin</option>
-                  <option>Manager</option>
-                </Select>
-                <Input
-                  placeholder="Department"
-                  value={form.department}
-                  onChange={(e) => setForm({ ...form, department: e.target.value })}
-                />
-              </div>
-              <ButtonGroup>
-                <Button type="submit" variant="primary">
-                  Create
-                </Button>
-                <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-                  Cancel
-                </Button>
-              </ButtonGroup>
-            </Form>
-          </Card>
+            <Card>
+              <h3>Add Employee or Admin</h3>
+              <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                  <label>Name</label>
+                  <input
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="Enter full name"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Email</label>
+                  <input
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Enter email address"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Password</label>
+                  <input
+                    name="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Enter password"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Role</label>
+                  <select name="role" value={formData.role} onChange={handleChange} required>
+                    <option value="employee">Employee</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Department (optional)</label>
+                  <input
+                    name="department"
+                    value={formData.department}
+                    onChange={handleChange}
+                    placeholder="Enter department"
+                  />
+                </div>
+
+                <SubmitButton type="submit" disabled={loading}>
+                  {loading ? "Adding..." : "Add User"}
+                </SubmitButton>
+
+                {message && <Message type={message.type}>{message.text}</Message>}
+              </form>
+            </Card>
+          </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </Wrapper>
   );
 };
+
+// Styled Components
+const Wrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+`;
+
+const ToggleButton = styled.button`
+  background: linear-gradient(90deg, #d32f2f, #b71c1c);
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  width: 90%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(211, 47, 47, 0.3);
+
+  &:hover {
+    background: linear-gradient(90deg, #b71c1c, #880e0e);
+    transform: scale(1.03);
+  }
+`;
+
+const Card = styled.div`
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 24px;
+  margin-top: 16px;
+  width: 90%;
+  max-width: 480px;
+  overflow: hidden;
+
+  h3 {
+    text-align: center;
+    margin-bottom: 16px;
+    color: #b71c1c;
+    font-weight: 700;
+    font-size: 1.2rem;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #333;
+  }
+
+  input,
+  select {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 15px;
+    transition: 0.3s ease;
+    background-color: #fff;
+
+    &:focus {
+      border-color: #d32f2f;
+      outline: none;
+      box-shadow: 0 0 5px rgba(211, 47, 47, 0.3);
+    }
+  }
+`;
+
+const SubmitButton = styled.button`
+  background: #d32f2f;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s ease;
+  margin-top: 8px;
+
+  &:hover {
+    background: #b71c1c;
+    transform: scale(1.02);
+  }
+
+  &:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+const Message = styled.p<{ type: "success" | "error" }>`
+  margin-top: 10px;
+  font-weight: 500;
+  text-align: center;
+  color: ${(props) => (props.type === "success" ? "#2e7d32" : "#c62828")};
+`;
