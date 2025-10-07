@@ -13,7 +13,6 @@ function App() {
     <BrowserRouter>
       {/* Show Navbar only if logged in */}
       {user && <Navbar />}
-      <div className="min-h-screen bg-gray-50 text-gray-900">
         <Routes>
           {/* Redirect logged-in users from /login */}
           <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
@@ -34,7 +33,6 @@ function App() {
             }
           />
         </Routes>
-      </div>
     </BrowserRouter>
   );
 }

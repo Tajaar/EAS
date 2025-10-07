@@ -1,83 +1,94 @@
-import { useEffect, useState } from "react";
-import { api } from "../services/api";
-import { useAuth } from "../context/AuthContent";
+// src/components/EmployeeList.tsx
+import { useState, useEffect } from "react";
+import Button from "./Button";
+import { Users } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import styled from "styled-components";
 
 interface Employee {
   id: number;
   name: string;
   email: string;
-  role: string;
 }
 
-interface Props {
-  onSelectEmployee?: (id: number) => void; // optional callback for admin
+interface EmployeeListProps {
+  onSelectEmployee: (id: number) => void;
 }
 
-export const EmployeeList = ({ onSelectEmployee }: Props) => {
-  const { user } = useAuth();
+export const EmployeeList: React.FC<EmployeeListProps> = ({ onSelectEmployee }) => {
+  const [showList, setShowList] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [message, setMessage] = useState("");
 
-  const fetchEmployees = async () => {
-    if (!user) return;
-    const res = await api.get(`/admin/users?admin_id=${user.id}`);
-    setEmployees(res.data);
-  };
-
-  const handleDelete = async (id: number) => {
-    try {
-      await api.delete(`/admin/delete-user/${id}?admin_id=${user?.id}`);
-      setMessage("User deleted successfully");
-      fetchEmployees();
-    } catch (err: any) {
-      setMessage(err.response?.data?.detail || "Error deleting user");
-    }
-  };
-
+  // Fetch employees (replace with your API)
   useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const res = await fetch("/api/employees"); // your endpoint
+        const data = await res.json();
+        setEmployees(data);
+      } catch (err) {
+        console.error("Error fetching employees:", err);
+      }
+    };
     fetchEmployees();
   }, []);
 
   return (
-    <div className="bg-gray-100 p-4 rounded shadow-md mb-4">
-      <h3 className="text-lg mb-2">Employee List</h3>
-      {message && <p className="text-blue-700 mb-2">{message}</p>}
-      <table className="min-w-full border">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border px-2 py-1">ID</th>
-            <th className="border px-2 py-1">Name</th>
-            <th className="border px-2 py-1">Email</th>
-            <th className="border px-2 py-1">Role</th>
-            <th className="border px-2 py-1">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {employees.map((emp) => (
-            <tr
-              key={emp.id}
-              className="cursor-pointer hover:bg-gray-50"
-              onClick={() => onSelectEmployee && onSelectEmployee(emp.id)}
-            >
-              <td className="border px-2 py-1">{emp.id}</td>
-              <td className="border px-2 py-1">{emp.name}</td>
-              <td className="border px-2 py-1">{emp.email}</td>
-              <td className="border px-2 py-1">{emp.role}</td>
-              <td className="border px-2 py-1">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // prevent triggering row click
-                    handleDelete(emp.id);
-                  }}
-                  className="bg-red-500 text-white px-2 py-1 rounded"
+    <div>
+      {/* Toggle Button */}
+      <Button onClick={() => setShowList(!showList)}>
+        <Users className="w-5 h-5" />
+        {showList ? "Hide Employee List" : "View Employee List"}
+      </Button>
+
+      {/* Employee List Card */}
+      <AnimatePresence initial={false}>
+        {showList && (
+          <motion.div
+            key="employee-list-card"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card>
+              {employees.length === 0 && (
+                <p className="text-gray-500 text-center py-4">No employees found</p>
+              )}
+              {employees.map((emp) => (
+                <EmployeeItem
+                  key={emp.id}
+                  onClick={() => onSelectEmployee(emp.id)}
                 >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  {emp.name} — {emp.email}
+                </EmployeeItem>
+              ))}
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+
+// Styled components
+const Card = styled.div`
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  margin-top: 12px;
+  max-height: 300px; /* Scrollable max height */
+  overflow-y: auto;
+  padding: 12px;
+`;
+
+const EmployeeItem = styled.div`
+  padding: 10px 12px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s;
+
+  &:hover {
+    background-color: #f0f4f8;
+  }
+`;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import styled from "styled-components";
+import styled, { keyframes, css } from "styled-components";
 
 export const CheckToggle: React.FC<{
   initialChecked?: boolean;
@@ -25,8 +25,8 @@ export const CheckToggle: React.FC<{
   };
 
   return (
-    <StyledWrapper>
-      <div className="container">
+    <Wrapper>
+      <ToggleContainer>
         <input
           type="checkbox"
           id="checkbox"
@@ -34,98 +34,110 @@ export const CheckToggle: React.FC<{
           onChange={toggle}
           disabled={loading}
         />
-        <label htmlFor="checkbox" className="label" />
-      </div>
+        <ToggleLabel checked={checked} />
+      </ToggleContainer>
 
-      <div className="text-section">
-        <div className="status">
+      <MessageSection>
+        <Status loading={loading} checked={checked}>
           {loading ? "Processing..." : checked ? "Checked In" : "Checked Out"}
-        </div>
-        <div className="hint">
+        </Status>
+        <Hint checked={checked}>
           {checked ? "Tap to check out" : "Tap to check in"}
-        </div>
-      </div>
-    </StyledWrapper>
+        </Hint>
+      </MessageSection>
+    </Wrapper>
   );
 };
 
-const StyledWrapper = styled.div`
+// Animations
+const pulse = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+`;
+
+const glow = keyframes`
+  0%, 100% { box-shadow: 0 0 8px #4caf50; }
+  50% { box-shadow: 0 0 20px #4caf50; }
+`;
+
+// Styled components
+const Wrapper = styled.div`
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 20px;
+  justify-content: center;
+  padding: 40px 30px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  max-width: 320px;
+  margin: 50px auto;
+`;
 
-  .container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+const ToggleContainer = styled.div`
+  position: relative;
+  width: 80px;
+  height: 44px;
 
-  .label {
-    height: 60px;
-    width: 120px;
-    background-color: #ffffff;
-    border-radius: 30px;
-    box-shadow: inset 0 0 5px 4px rgba(255, 255, 255, 1),
-      inset 0 0 20px 1px rgba(0, 0, 0, 0.488),
-      10px 20px 30px rgba(0, 0, 0, 0.096),
-      inset 0 0 0 3px rgba(0, 0, 0, 0.3);
-    display: flex;
-    align-items: center;
+  input[type="checkbox"] {
+    opacity: 0;
+    width: 100%;
+    height: 100%;
     cursor: pointer;
-    position: relative;
-    transition: transform 0.4s;
-  }
-
-  .label:hover {
-    transform: perspective(100px) rotateX(5deg) rotateY(-5deg);
-  }
-
-  #checkbox:checked ~ .label:hover {
-    transform: perspective(100px) rotateX(-5deg) rotateY(5deg);
-  }
-
-  #checkbox {
-    display: none;
-  }
-
-  #checkbox:checked ~ .label::before {
-    left: 70px;
-    background-color: #000000;
-    background-image: linear-gradient(315deg, #000000 0%, #414141 70%);
-    transition: 0.4s;
-  }
-
-  .label::before {
     position: absolute;
+    z-index: 2;
+  }
+`;
+
+const ToggleLabel = styled.label<{ checked?: boolean }>`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: ${({ checked }) => (checked ? "#4caf50" : "#ccc")};
+  border-radius: 44px;
+  transition: background 0.4s ease;
+  cursor: pointer;
+  box-shadow: ${({ checked }) => (checked ? "0 0 10px #4caf50" : "none")};
+
+  &:before {
     content: "";
-    height: 40px;
-    width: 40px;
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    width: 36px;
+    height: 36px;
+    background: #fff;
     border-radius: 50%;
-    background-color: #000000;
-    background-image: linear-gradient(
-      130deg,
-      #757272 10%,
-      #ffffff 11%,
-      #726f6f 62%
-    );
-    left: 10px;
-    box-shadow: 0 2px 1px rgba(0, 0, 0, 0.3),
-      10px 10px 10px rgba(0, 0, 0, 0.3);
-    transition: 0.4s;
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+    ${({ checked }) =>
+      checked &&
+      css`
+        transform: translateX(36px);
+        animation: ${pulse} 0.4s ease, ${glow} 1.2s ease-in-out infinite;
+      `}
   }
+`;
 
-  .text-section {
-    display: flex;
-    flex-direction: column;
-  }
+const MessageSection = styled.div`
+  margin-top: 24px;
+  text-align: center;
+`;
 
-  .status {
-    font-weight: 600;
-    font-size: 0.9rem;
-  }
+const Status = styled.div<{ loading: boolean; checked: boolean }>`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: ${({ checked }) => (checked ? "#4caf50" : "#333")};
+  opacity: ${({ loading }) => (loading ? 0.7 : 1)};
+  transition: all 0.3s;
+`;
 
-  .hint {
-    font-size: 0.8rem;
-    color: gray;
-  }
+const Hint = styled.div<{ checked: boolean }>`
+  font-size: 0.95rem;
+  color: #666;
+  margin-top: 6px;
+  transition: color 0.3s;
+  color: ${({ checked }) => (checked ? "#388e3c" : "#666")};
 `;

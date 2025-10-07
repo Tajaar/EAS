@@ -9,6 +9,8 @@ from app.schemas.attendance import CheckInOut
 from app.db.session import get_db
 from app.models.attendance import AttendanceLog, AttendanceSummary
 from app.models.user import User
+from app.crud import attendance as crud
+
 
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
 
@@ -114,3 +116,10 @@ def check_status(user_id: int = Query(...), db: Session = Depends(get_db)):
     checked_in = last_log is not None and last_log.check_out is None
     return {"checked_in": checked_in}
 
+@router.get("/attendance/today-summary/{user_id}")
+def get_today_summary(user_id: int, db: Session = Depends(get_db)):
+    today = date.today()
+    summary = crud.update_summary(db, user_id=user_id, date_=today)
+    if not summary:
+        return {"first_in": None, "final_out": None, "total_duration": "00:00:00"}
+    return crud.serialize_summary(summary)

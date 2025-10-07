@@ -1,5 +1,57 @@
+// eas-app/src/components/AddUserCard.tsx
 import React, { useState } from "react";
+import styled from "styled-components";
+import { motion, AnimatePresence } from "framer-motion";
+import { PlusCircle } from "lucide-react";
 import axios from "axios";
+import Button from "./Button"; // your shared Button component
+
+const Card = styled(motion.div)`
+  background: #fff;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  max-width: 500px;
+  margin-top: 1rem;
+`;
+
+const Form = styled.form`
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`;
+
+const Input = styled.input`
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid #cbd5e1;
+  outline: none;
+  font-size: 1rem;
+
+  &:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
+  }
+`;
+
+const Select = styled.select`
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid #cbd5e1;
+  font-size: 1rem;
+
+  &:focus {
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
+    outline: none;
+  }
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 1rem;
+`;
 
 export const AddUserCard: React.FC<{ apiBase?: string }> = ({ apiBase = "/api" }) => {
   const [open, setOpen] = useState(false);
@@ -10,34 +62,65 @@ export const AddUserCard: React.FC<{ apiBase?: string }> = ({ apiBase = "/api" }
     await axios.post(`${apiBase}/employees`, form);
     setForm({ name: "", email: "", role: "Employee", department: "" });
     setOpen(false);
-    // optionally trigger refresh event
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded p-4">
-      <div className="flex justify-between items-center">
-        <h3 className="font-semibold">Create user</h3>
-        <button onClick={() => setOpen(s => !s)} className="btn btn-sm">{open ? "Close" : "Create user"}</button>
-      </div>
+    <div className="mb-6">
+      <Button onClick={() => setOpen((prev) => !prev)}>
+        <PlusCircle className="w-5 h-5 mr-2" />
+        {open ? "Hide Add User" : "Add New User"}
+      </Button>
 
-      {open && (
-        <form onSubmit={submit} className="mt-3 space-y-2">
-          <input required placeholder="Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full border px-2 py-1 rounded" />
-          <input required type="email" placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="w-full border px-2 py-1 rounded" />
-          <div className="flex gap-2">
-            <select value={form.role} onChange={e => setForm({...form, role: e.target.value})} className="border px-2 py-1 rounded">
-              <option>Employee</option>
-              <option>Admin</option>
-              <option>Manager</option>
-            </select>
-            <input placeholder="Department" value={form.department} onChange={e => setForm({...form, department: e.target.value})} className="border px-2 py-1 rounded flex-1" />
-          </div>
-          <div className="flex gap-2">
-            <button type="submit" className="btn btn-primary">Create</button>
-            <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost">Cancel</button>
-          </div>
-        </form>
-      )}
+      <AnimatePresence initial={false}>
+        {open && (
+          <Card
+            key="add-user-card"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Form onSubmit={submit}>
+              <Input
+                required
+                placeholder="Name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+              <Input
+                required
+                type="email"
+                placeholder="Email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+              <div style={{ display: "flex", gap: "1rem" }}>
+                <Select
+                  value={form.role}
+                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                >
+                  <option>Employee</option>
+                  <option>Admin</option>
+                  <option>Manager</option>
+                </Select>
+                <Input
+                  placeholder="Department"
+                  value={form.department}
+                  onChange={(e) => setForm({ ...form, department: e.target.value })}
+                />
+              </div>
+              <ButtonGroup>
+                <Button type="submit" variant="primary">
+                  Create
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+              </ButtonGroup>
+            </Form>
+          </Card>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

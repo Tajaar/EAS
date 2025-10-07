@@ -1,3 +1,4 @@
+# backend/app/crud/attendance.py
 from sqlalchemy.orm import Session
 from app.models.attendance import AttendanceLog, AttendanceSummary
 from datetime import datetime, date, timedelta
@@ -64,6 +65,18 @@ def update_summary(db: Session, user_id: int, date_: date):
     db.refresh(summary)
     return summary
 
+def serialize_summary(summary: AttendanceSummary):
+    """Convert summary model to JSON-friendly dict."""
+    total_seconds = int(summary.total_duration.total_seconds()) if summary.total_duration else 0
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    formatted_duration = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+    return {
+        "first_in": summary.first_in.isoformat() if summary.first_in else None,
+        "final_out": summary.final_out.isoformat() if summary.final_out else None,
+        "total_duration": formatted_duration
+    }
 
 def get_user_logs(db: Session, user_id: int):
     return db.query(AttendanceLog).filter(AttendanceLog.user_id == user_id).all()
