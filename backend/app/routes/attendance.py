@@ -96,3 +96,21 @@ def get_today_summary(
         "total_duration": str(summary.total_duration) if summary and summary.total_duration else "00:00:00"
 
     }
+# ---------------- CHECK STATUS ----------------
+@router.get("/check-status")
+def check_status(user_id: int = Query(...), db: Session = Depends(get_db)):
+    """
+    Returns whether the user is currently checked in.
+    """
+    # Get the last log for the user
+    last_log = (
+        db.query(AttendanceLog)
+        .filter(AttendanceLog.user_id == user_id)
+        .order_by(desc(AttendanceLog.check_in))
+        .first()
+    )
+
+    # Checked in if last log exists and check_out is None
+    checked_in = last_log is not None and last_log.check_out is None
+    return {"checked_in": checked_in}
+
